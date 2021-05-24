@@ -1,7 +1,7 @@
 package discord.kt
 
-import dev.kord.common.entity.DiscordUser
 import dev.kord.common.entity.Snowflake
+import dev.kord.core.entity.User
 import discord.kt.data.Regexes
 import discord.kt.utils.InitOnce
 
@@ -26,7 +26,7 @@ class PrefixMatcher(
     /**
      * Init the user id stored internally
      */
-    fun installUser(user: DiscordUser) {
+    fun installUser(user: User) {
         this._initUserIdOnce.initWith(user.id)
     }
 

@@ -1,49 +1,53 @@
 package discord.kt
 
-import dev.kord.common.entity.DiscordUser
-import dev.kord.gateway.DefaultGateway
-import dev.kord.gateway.GatewayConfigurationBuilder
-import dev.kord.gateway.MessageCreate
-import dev.kord.gateway.Ready
+import dev.kord.core.Kord
+import dev.kord.core.entity.User
+import dev.kord.core.event.gateway.ReadyEvent
+import dev.kord.core.event.message.MessageCreateEvent
+import dev.kord.core.on
 import discord.kt.commands.Context
 import discord.kt.commands.Module
 import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.errors.DuplicateModuleNameException
 import discord.kt.utils.InitOnce
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 
 @OptIn(ObsoleteCoroutinesApi::class)
 open class Bot(private val prefixMatcher: PrefixMatcher) {
-    private val gateway = DefaultGateway()
+    private lateinit var kord: Kord
 
-    private val _initUserOnce = InitOnce<DiscordUser>("user")
-    val user: DiscordUser by _initUserOnce
+    private val _initUserOnce = InitOnce<User>("user")
+    val user: User by _initUserOnce
 
     private val _modules = mutableListOf<Module>()
-
-    init {
-        gateway.events.filterIsInstance<Ready>().flowOn(Dispatchers.IO).onEach {
-            this.setup(it)
-            this.onReady()
-        }.launchIn(GlobalScope)
-
-        gateway.events.filterIsInstance<MessageCreate>().flowOn(Dispatchers.IO).onEach {
-            this.invoke(it)
-        }.launchIn(GlobalScope)
-    }
 
     /**
      * Start the bot & authenticate with a given token
      */
-    @OptIn(ObsoleteCoroutinesApi::class)
     suspend fun run(token: String) {
-        gateway.start(GatewayConfigurationBuilder(token).build())
+        // This has to be done here because the builder is a suspend function
+        this.kord = Kord(token)
+
+        // Register all gateway event listeners
+        this.registerListeners()
+
+        // Sign in to Discord
+        this.kord.login()
+    }
+
+    /**
+     * Register all the Kord Event listeners
+     */
+    private fun registerListeners() {
+        this.kord.on<ReadyEvent> {
+            this@Bot.setup(this)
+            this@Bot.onReady()
+        }
+
+        this.kord.on<MessageCreateEvent> {
+            this@Bot.invoke(this)
+            this@Bot.onMessage(this)
+        }
     }
 
     /**
@@ -100,15 +104,15 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
      * Setup initial things when the bot is ready, different from onReady in that
      * it can't be overridden
      */
-    private fun setup(ready: Ready) {
-        this._initUserOnce.initWith(ready.data.user)
+    private fun setup(ready: ReadyEvent) {
+        this._initUserOnce.initWith(ready.self)
         this.prefixMatcher.installUser(this.user)
     }
 
     /**
      * Parse the message that was created and invoke commands if necessary
      */
-    private fun invoke(messageCreate: MessageCreate) {
+    private suspend fun invoke(messageCreate: MessageCreateEvent) {
         val message = messageCreate.message.content
 
         // Try to match a prefix against this message
@@ -122,7 +126,7 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
             module.forEach { command ->
                 if (command.triggeredBy(commands[0])) {
                     // TODO context
-                    command.process(Context())
+                    command.process(Context(messageCreate))
                     return@invoke
                 }
             }
@@ -137,4 +141,9 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
     open fun onReady() {
         println("Ready!")
     }
+
+    /**
+     * Called whenever the bot gets a message
+     */
+    open fun onMessage(messageCreate: MessageCreateEvent) {}
 }

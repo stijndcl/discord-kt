@@ -1,5 +1,8 @@
 package discord.kt.commands
 
+import discord.kt.Bot
+import discord.kt.utils.InitOnce
+
 abstract class Command {
     // The name of this command
     abstract val name: String
@@ -14,7 +17,11 @@ abstract class Command {
     open val subCommands: List<Command> = listOf()
 
     // Process the arguments given by the user that invoked the command
-    abstract fun process(context: Context)
+    abstract suspend fun process(context: Context)
+
+    // Reference to the bot
+    private val _initBotOnce = InitOnce<Bot>("bot")
+    private val _bot: Bot by _initBotOnce
 
     // Check if an argument can trigger this command
     fun triggeredBy(arg: String): Boolean {
@@ -25,5 +32,10 @@ abstract class Command {
         }
 
         return this.aliases.contains(arg)
+    }
+
+    // Called when the command is added to the bot
+    fun installed(bot: Bot) {
+        this._initBotOnce.initWith(bot)
     }
 }

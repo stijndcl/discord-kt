@@ -1,11 +1,17 @@
 package discord.kt.commands
 
+import discord.kt.Bot
 import discord.kt.errors.DuplicateCommandNameException
+import discord.kt.utils.InitOnce
 
 abstract class Module: ArrayList<Command>() {
     abstract val name: String
 
     private val commandNames: MutableList<String> = mutableListOf()
+
+    // Reference to the bot
+    private val _initBotOnce = InitOnce<Bot>("bot")
+    private val _bot: Bot by _initBotOnce
 
     /**
      * Check if a command's name is not a duplicate before adding
@@ -36,6 +42,12 @@ abstract class Module: ArrayList<Command>() {
         commandNames.addAll(element.aliases)
 
         return true
+    }
+
+    // Called when the module is added to the bot
+    fun installed(bot: Bot) {
+        this._initBotOnce.initWith(bot)
+        this.forEach { command -> command.installed(bot) }
     }
 
     /**
