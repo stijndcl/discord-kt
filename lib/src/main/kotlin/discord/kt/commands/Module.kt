@@ -1,5 +1,7 @@
 package discord.kt.commands
 
+import discord.kt.errors.DuplicateCommandNameException
+
 abstract class Module: ArrayList<Command>() {
     abstract val name: String
 
@@ -15,8 +17,7 @@ abstract class Module: ArrayList<Command>() {
         // Check if name and all aliases are not yet being used anywhere
         this.commandNames.forEach {
             if (it == lowerName || lowerAliases.contains(it)) {
-                throw IllegalArgumentException("Duplicate command name \"$lowerName\" has already been registered in module $name")
-            }
+                throw DuplicateCommandNameException(command.name, this.name)            }
         }
 
         return true
@@ -35,5 +36,12 @@ abstract class Module: ArrayList<Command>() {
         commandNames.addAll(element.aliases)
 
         return true
+    }
+
+    /**
+     * Return the list of command names without making the property public
+     */
+    fun getCommandNames(): List<String> {
+        return this.commandNames
     }
 }

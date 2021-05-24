@@ -5,6 +5,10 @@ import dev.kord.gateway.DefaultGateway
 import dev.kord.gateway.GatewayConfigurationBuilder
 import dev.kord.gateway.MessageCreate
 import dev.kord.gateway.Ready
+import discord.kt.commands.Context
+import discord.kt.commands.Module
+import discord.kt.errors.DuplicateCommandNameException
+import discord.kt.errors.DuplicateModuleNameException
 import discord.kt.utils.InitOnce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -21,6 +25,8 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
     private val _initUserOnce = InitOnce<DiscordUser>("user")
     val user: DiscordUser by _initUserOnce
 
+    private val _modules = mutableListOf<Module>()
+
     init {
         gateway.events.filterIsInstance<Ready>().flowOn(Dispatchers.IO).onEach {
             this.setup(it)
@@ -28,7 +34,7 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
         }.launchIn(GlobalScope)
 
         gateway.events.filterIsInstance<MessageCreate>().flowOn(Dispatchers.IO).onEach {
-
+            this.invoke(it)
         }.launchIn(GlobalScope)
     }
 
@@ -38,6 +44,56 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
     @OptIn(ObsoleteCoroutinesApi::class)
     suspend fun run(token: String) {
         gateway.start(GatewayConfigurationBuilder(token).build())
+    }
+
+    /**
+     * Add a module to the bot
+     *
+     * Returns itself to allow chaining
+     */
+    fun installModule(module: Module): Bot {
+        val nameLower = module.name.toLowerCase()
+        val commandNames = module.getCommandNames()
+
+        // Check if this module doesn't add any duplicate names
+        this._modules.forEach {
+            // Module name is not unique
+            if (it.name.toLowerCase() == nameLower) {
+                throw DuplicateModuleNameException(module.name)
+            }
+
+            // One of its command names is not unique
+            it.getCommandNames().forEach { name ->
+                if (commandNames.contains(name)) {
+                    throw DuplicateCommandNameException(name, it.name)
+                }
+            }
+        }
+
+        // Everything is okay -> add the module in
+        this._modules.add(module)
+
+        return this
+    }
+
+    /**
+     * Add an entire collection of modules to the bot
+     */
+    fun installAll(modules: Collection<Module>): Bot {
+        modules.forEach { this.installModule(it) }
+
+        return this
+    }
+
+    /**
+     * Remove a module from the bot. If no module was found, nothing happens.
+     *
+     * Returns itself to allow chaining
+     */
+    fun uninstallModule(name: String): Bot {
+        this._modules.removeIf { it.name == name }
+
+        return this
     }
 
     /**
@@ -62,7 +118,15 @@ open class Bot(private val prefixMatcher: PrefixMatcher) {
             .trimStart() // Strip optional whitespace after prefix
             .split(" ") // Split string based on spaces
 
-//        TODO find command & match it
+        this._modules.forEach { module ->
+            module.forEach { command ->
+                if (command.triggeredBy(commands[0])) {
+                    // TODO context
+                    command.process(Context())
+                    return@invoke
+                }
+            }
+        }
     }
 
     // Functions called by gateway events

@@ -15,4 +15,15 @@ abstract class Command {
 
     // Process the arguments given by the user that invoked the command
     abstract fun process(context: Context)
+
+    // Check if an argument can trigger this command
+    fun triggeredBy(arg: String): Boolean {
+        if (this.name.equals(arg, this.caseInsensitive)) return true
+
+        if (this.caseInsensitive) {
+            return this.aliases.map { it.toLowerCase() }.contains(arg.toLowerCase())
+        }
+
+        return this.aliases.contains(arg)
+    }
 }

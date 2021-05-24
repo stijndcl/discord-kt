@@ -7,8 +7,8 @@ import discord.kt.utils.InitOnce
 
 class PrefixMatcher(
     var prefix: List<String>,
-    val whenMentioned: Boolean = false,
-    val caseInsensitive: Boolean = false
+    private val whenMentioned: Boolean = false,
+    private val caseInsensitive: Boolean = false
 ) {
     constructor(prefix: String, whenMentioned: Boolean = false, caseInsensitive: Boolean = false)
             : this(listOf(prefix), whenMentioned, caseInsensitive)
