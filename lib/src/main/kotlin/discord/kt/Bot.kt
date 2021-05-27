@@ -24,11 +24,11 @@ import kotlinx.coroutines.ObsoleteCoroutinesApi
 @OptIn(ObsoleteCoroutinesApi::class)
 open class Bot(
     private val prefixMatcher: PrefixMatcher, // PrefixMatcher used by the bot
-    private val ignoreSelf: Boolean = true, // Should the bot ignore itself?
-    private val ignoreBots: Boolean = true, // Should the bot ignore other bots? (excludes self)
-    private val ignoreDms: Boolean = true, // Should the bot ignore DM's?
+    val ignoreSelf: Boolean = true, // Should the bot ignore itself?
+    val ignoreBots: Boolean = true, // Should the bot ignore other bots? (excludes self)
+    val ignoreDms: Boolean = true, // Should the bot ignore DM's?
     private val createDefaultHelp: Boolean = true, // Should a default help command be added?
-    private val helpPageColour: Color = Color(0x3498db) // Colour of the default help page
+    private val mainEmbedColour: Color = Color(0x3498db) // Colour of the default help page
 ) {
     private lateinit var kord: Kord
 
@@ -142,7 +142,7 @@ open class Bot(
         this.prefixMatcher.installUser(this.user)
 
         if (this.createDefaultHelp) {
-            this.installModule(DefaultHelpModule(helpPageColour))
+            this.installModule(DefaultHelpModule(mainEmbedColour))
         }
     }
 
@@ -153,6 +153,7 @@ open class Bot(
 //        TODO allow commands & modules to overrule these restrictions
 //         (eg. some commands work in DM, ...)
 //         -> don't check them here
+//         use lateinit vars to see if user changed them, else use bot vars as defaults
         // Check if command invocation should proceed
         if (!this.checkInvocationRestrictions(messageCreate)) return
 

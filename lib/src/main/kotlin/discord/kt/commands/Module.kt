@@ -39,7 +39,8 @@ abstract class Module: ArrayList<Command>() {
         // Check if name and all aliases are not yet being used anywhere
         this.commandNames.forEach {
             if (it == lowerName || lowerAliases.contains(it)) {
-                throw DuplicateCommandNameException(command.name, this.name)            }
+                throw DuplicateCommandNameException(command.name, this.name)
+            }
         }
 
         return true
