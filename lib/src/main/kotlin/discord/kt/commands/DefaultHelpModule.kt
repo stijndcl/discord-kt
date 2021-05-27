@@ -1,11 +1,10 @@
 package discord.kt.commands
 
 import dev.kord.common.Color
-import dev.kord.core.entity.User
 
 class DefaultHelpModule(embedColour: Color): Module() {
     override val name: String = "HelpModule"
-    override fun visibleInHelp(user: User): Boolean = false
+    override fun visibleInHelp(context: Context): Boolean = false
 
     init {
         this.add(DefaultHelpCommand(embedColour))

@@ -1,31 +1,34 @@
 package discord.kt.commands
 
-import dev.kord.core.entity.User
 import discord.kt.Bot
 import discord.kt.utils.InitOnce
 
-abstract class Command(val parent: Command? = null) : CommandContainer {
+//TODO allow checks to be added with annotations above class & functions (add to list)
+abstract class Command(private val parent: Command? = null) : CommandContainer {
     // The name of this command
     abstract val name: String
 
     // The aliases that can invoke this command
     open val aliases: List<String> = listOf()
 
+    // Checks that run when this command is invoked,
+    // command will only run if all of them return true
+    // This is also called when subcommands are invoked
+    open val checks: ArrayList<suspend (Context) -> Boolean> = arrayListOf()
+
     // Boolean indicating if this command can be triggered case-insensitively
     open val caseInsensitive: Boolean = true
 
+//    TODO make adding subcommands easier (this won't always be passed, ...)
+//      Decorator above function?
     // Optional list of subcommands that this command has
     open val subCommands: List<Command> = listOf()
 
-    // In case this function has subcommands:
-    // if a subcommand was invoked, should this one still run?
-    open val runWhenSubcommandInvoked: Boolean = false
-
     // Function signature in the help command
-    open val helpSignature: String = ""
+    open var helpSignature: String = ""
 
     // Command description in the help command
-    open val helpDescription: String = ""
+    open var helpDescription: String = ""
 
     // Function that runs before the invocation of a subcommand
     open fun runBeforeSubcommand(context: Context) {}
@@ -33,18 +36,20 @@ abstract class Command(val parent: Command? = null) : CommandContainer {
     // Function that runs after the invocation of a subcommand
     open fun runAfterSubcommand(context: Context) {}
 
-    // Function that checks if the current user can see
-    // this command in the help page
-    // Useful when hiding things like mod commands from normal users
-    open fun visibleInHelp(user: User): Boolean = true
+    // Function that checks if this command should be visible
+    // in the help page in the given context
+    // For example: hiding things like mod commands from normal users
+    // or only showing dev commands in the developer server
+    open fun visibleInHelp(context: Context): Boolean = true
 
     // Process the arguments given by the user that invoked the command
-//    TODO first go recursively to find subcommands, then call this
     abstract suspend fun process(context: Context)
 
     // Reference to the bot
     private val _initBotOnce = InitOnce<Bot>("bot")
     private val _bot: Bot by _initBotOnce
+
+    val depth: Int = if (parent == null) 0 else parent.depth + 1
 
     // Check if an argument can trigger this command
     fun triggeredBy(arg: String): Boolean {
@@ -60,6 +65,35 @@ abstract class Command(val parent: Command? = null) : CommandContainer {
     // Called when the command is added to the bot
     fun installed(bot: Bot) {
         this._initBotOnce.initWith(bot)
+    }
+
+    /**
+     * Return all parents of this command
+     */
+    fun getParentChain(): List<Command> {
+        val l = arrayListOf<Command>()
+        var current = this.parent
+
+        while (current != null) {
+            l.add(current)
+            current = current.parent
+        }
+
+        return l.toList()
+    }
+
+    // Check if all checks + parent checks for this command pass
+    suspend fun canRun(context: Context): Boolean {
+        // Parent checks
+        if (parent != null) {
+            if (!parent.canRun(context)) return false
+        }
+
+        // Own checks
+        if (this.checks.any { c -> !c(context) }) return false
+
+        // Nothing failed -> everything is okay
+        return true
     }
 
     final override fun getChildWithName(name: String,  matchEntire: Boolean): Command? {
