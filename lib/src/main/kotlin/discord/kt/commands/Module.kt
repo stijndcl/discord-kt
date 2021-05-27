@@ -1,11 +1,18 @@
 package discord.kt.commands
 
+import dev.kord.core.entity.User
 import discord.kt.Bot
 import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.utils.InitOnce
 
 abstract class Module: ArrayList<Command>() {
+    // Name of the module
     abstract val name: String
+
+    // Function that checks if the current user can see
+    // this module in the help page
+    // Useful when hiding things like mod commands from normal users
+    open fun visibleInHelp(user: User): Boolean = true
 
     private val commandNames: MutableList<String> = mutableListOf()
 
@@ -19,6 +26,15 @@ abstract class Module: ArrayList<Command>() {
     private fun isValid(command: Command): Boolean {
         val lowerName = command.name.toLowerCase()
         val lowerAliases = command.aliases.map { it.toLowerCase() }
+
+        // Check if command doesn't use the name of the module
+        if (lowerName == this.name.toLowerCase()) {
+            throw IllegalArgumentException("Command name ${command.name} overlaps with module name")
+        }
+
+        if (lowerAliases.contains(this.name.toLowerCase())) {
+            throw IllegalArgumentException("Command ${command.name} has an alias ${this.name} which overlaps with module name")
+        }
 
         // Check if name and all aliases are not yet being used anywhere
         this.commandNames.forEach {
@@ -56,4 +72,9 @@ abstract class Module: ArrayList<Command>() {
     fun getCommandNames(): List<String> {
         return this.commandNames
     }
+
+    /**
+     * Find the installed command that matches a given name
+     */
+    fun getCommandMatching(name: String): Command?  = this.find { command -> command.triggeredBy(name) }
 }

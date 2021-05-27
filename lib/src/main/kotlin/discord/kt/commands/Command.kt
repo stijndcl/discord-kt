@@ -1,5 +1,6 @@
 package discord.kt.commands
 
+import dev.kord.core.entity.User
 import discord.kt.Bot
 import discord.kt.utils.InitOnce
 
@@ -16,7 +17,19 @@ abstract class Command {
     // Optional list of subcommands that this command has
     open val subCommands: List<Command> = listOf()
 
+    // Function signature in the help command
+    open val helpSignature: String = ""
+
+    // Command description in the help command
+    open val helpDescription: String = ""
+
+    // Function that checks if the current user can see
+    // this command in the help page
+    // Useful when hiding things like mod commands from normal users
+    open fun visibleInHelp(user: User): Boolean = true
+
     // Process the arguments given by the user that invoked the command
+//    TODO first go recursively to find subcommands, then call this
     abstract suspend fun process(context: Context)
 
     // Reference to the bot
