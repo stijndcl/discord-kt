@@ -162,17 +162,18 @@ open class Bot(
         // Try to match a prefix against this message
         val prefixUsed = this.prefixMatcher.check(message) ?: return
 
-//        TODO split args into mutable list of strings & pass those instead
         val commands = messageCreate.message.content.drop(prefixUsed.length) // Strip prefix
             .trimStart() // Strip optional whitespace after prefix
-            .split(" ") // Split string based on spaces
+            .split(" ") // Split string based on spaces TODO split args into mutable list of strings & pass those instead
 
         this._modules.forEach { module ->
-            val command = module.getCommandMatching(commands[0])
+//            TODO pass everything instead of only first command (subcommands)
+            val command = module.getChildWithName(commands, 0, false)
 
             if (command != null) {
                 // TODO context
-                command.process(Context(messageCreate))
+                val context = Context(messageCreate, prefixUsed, command)
+                module.invokeCommand(context)
                 return@invoke
             }
         }
@@ -225,19 +226,23 @@ open class Bot(
     suspend fun createGuild(
         name: String, builder: GuildCreateBuilder.() -> Unit
     ): Guild = this.kord.createGuild(name, builder)
+
     suspend fun getChannel(
         id: Snowflake,
         strategy: EntitySupplyStrategy<*> =
             this.kord.resources.defaultStrategy,
     ): Channel? = this.kord.getChannel(id, strategy)
+
     suspend fun getGuild(
         id: Snowflake,
         strategy: EntitySupplyStrategy<*> =
             this.kord.resources.defaultStrategy,
     ): Guild? = this.kord.getGuild(id, strategy)
+
     suspend fun getUser(
         id: Snowflake,
         strategy: EntitySupplyStrategy<*> = this.kord.resources.defaultStrategy
     ): User? = this.kord.getUser(id, strategy)
+
     suspend fun editPresence(builder: PresenceBuilder.() -> Unit) = this.kord.editPresence(builder)
 }

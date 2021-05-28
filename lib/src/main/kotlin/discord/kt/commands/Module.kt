@@ -90,7 +90,9 @@ abstract class Module: ArrayList<Command>(), CommandContainer {
      * Invoke a command installed in this module
      * Don't invoke the command directly as this can run extra checks
      */
-    suspend fun invokeCommand(context: Context, command: Command) {
+    suspend fun invokeCommand(context: Context) {
+        val command = context.command
+
         // Checks failed
         if (this.checks.any { c -> !c(context) }) return
         if (!command.canRun(context)) return

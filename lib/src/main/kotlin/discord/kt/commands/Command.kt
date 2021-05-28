@@ -47,7 +47,7 @@ abstract class Command(private val parent: Command? = null) : CommandContainer {
 
     // Reference to the bot
     private val _initBotOnce = InitOnce<Bot>("bot")
-    private val _bot: Bot by _initBotOnce
+    val bot: Bot by _initBotOnce
 
     val depth: Int = if (parent == null) 0 else parent.depth + 1
 
