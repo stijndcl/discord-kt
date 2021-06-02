@@ -17,6 +17,7 @@ import discord.kt.commands.DefaultHelpModule
 import discord.kt.commands.Module
 import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.errors.DuplicateModuleNameException
+import discord.kt.errors.handling.ErrorHandler
 import discord.kt.utils.InitOnce
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlin.time.ExperimentalTime
@@ -24,6 +25,7 @@ import kotlin.time.ExperimentalTime
 @OptIn(ObsoleteCoroutinesApi::class)
 open class Bot(
     private val prefixMatcher: PrefixMatcher, // PrefixMatcher used by the bot
+    errorHandler: ErrorHandler? = null, // Error handler passed onto the bot
     val ignoreSelf: Boolean = true, // Should the bot ignore itself?
     val ignoreBots: Boolean = true, // Should the bot ignore other bots? (excludes self)
     val ignoreDms: Boolean = true, // Should the bot ignore DM's?
@@ -31,6 +33,7 @@ open class Bot(
     private val mainEmbedColour: Color = Color(0x3498db) // Colour of the default help page
 ) {
     private lateinit var kord: Kord
+    private val _errorHandler = errorHandler ?: ErrorHandler() // Create error handler if none passed
 
     private val _initUserOnce = InitOnce<User>("user")
     val user: User by _initUserOnce
@@ -173,7 +176,13 @@ open class Bot(
             if (command != null) {
                 // TODO context
                 val context = Context(messageCreate, prefixUsed, command)
-                module.invokeCommand(context)
+
+                try {
+                    module.invokeCommand(context)
+                } catch (e: Exception) {
+                    this._errorHandler.onException(messageCreate, e, this.kord)
+                }
+
                 return@invoke
             }
         }
@@ -248,5 +257,5 @@ open class Bot(
     suspend fun editPresence(builder: PresenceBuilder.() -> Unit) = this.kord.editPresence(builder)
 
     @OptIn(ExperimentalTime::class)
-    fun getLatency() = this.kord.gateway.averagePing?.toLongMilliseconds()?: 0
+    fun getLatency() = this.kord.gateway.averagePing?.toLongMilliseconds()?: -1
 }
