@@ -14,4 +14,6 @@ class Context(val messageCreateEvent: MessageCreateEvent, private val prefix: St
         .drop(command.depth + 1) // Remove all command invocations
         .joinToString(" ")
     val channel = messageCreateEvent.message.channel
+
+    suspend fun createMessage(content: String) = this.messageCreateEvent.message.channel.createMessage(content)
 }

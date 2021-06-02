@@ -19,8 +19,8 @@ import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.errors.DuplicateModuleNameException
 import discord.kt.utils.InitOnce
 import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlin.time.ExperimentalTime
 
-//TODO provide shorthand for internal Kord methods
 @OptIn(ObsoleteCoroutinesApi::class)
 open class Bot(
     private val prefixMatcher: PrefixMatcher, // PrefixMatcher used by the bot
@@ -223,6 +223,7 @@ open class Bot(
     // ===========================
     suspend fun logout() = this.kord.logout()
     suspend fun shutdown() = this.kord.shutdown()
+
     suspend fun createGuild(
         name: String, builder: GuildCreateBuilder.() -> Unit
     ): Guild = this.kord.createGuild(name, builder)
@@ -245,4 +246,7 @@ open class Bot(
     ): User? = this.kord.getUser(id, strategy)
 
     suspend fun editPresence(builder: PresenceBuilder.() -> Unit) = this.kord.editPresence(builder)
+
+    @OptIn(ExperimentalTime::class)
+    fun getLatency() = this.kord.gateway.averagePing?.toLongMilliseconds()?: 0
 }
