@@ -12,6 +12,6 @@ class Context(val messageCreateEvent: MessageCreateEvent, private val prefix: St
     val content = this._noPrefix
     val args = this._noPrefix.split(" ")
         .drop(command.depth + 1) // Remove all command invocations
-        .joinToString { " " }
+        .joinToString(" ")
     val channel = messageCreateEvent.message.channel
 }

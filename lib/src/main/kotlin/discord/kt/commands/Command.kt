@@ -24,8 +24,8 @@ abstract class Command(private val parent: Command? = null) : CommandContainer {
     // Optional list of subcommands that this command has
     open val subCommands: List<Command> = listOf()
 
-    // Function signature in the help command
-    open var helpSignature: String = ""
+    // Function usage in the help command
+    open var helpUsage: String = ""
 
     // Command description in the help command
     open var helpDescription: String = ""

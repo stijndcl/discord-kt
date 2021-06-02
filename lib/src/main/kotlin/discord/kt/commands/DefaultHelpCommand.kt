@@ -21,11 +21,6 @@ class DefaultHelpCommand(private val embedColour: Color) : Command() {
         } else {
             this.sendCommandHelp(context, data)
         }
-
-        context.messageCreateEvent.message.channel.createEmbed {
-            color = embedColour
-            author {name = "Help"}
-        }
     }
 
     /**
@@ -56,6 +51,9 @@ class DefaultHelpCommand(private val embedColour: Color) : Command() {
         }
     }
 
+    /**
+     * Group modules in fields to show as many as possible
+     */
     private fun groupModules(context: Context): List<String> {
         val l = mutableListOf<String>()
 
@@ -95,29 +93,70 @@ class DefaultHelpCommand(private val embedColour: Color) : Command() {
     }
 
     private suspend fun sendModulesList(context: Context) {
-        val groups = this.groupModules(context)
+        val modules = this.bot.getInstalledModules()
+            .filter { it.visibleInHelp(context) }
+            .map { it.name }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
+            .joinToString("\n")
 
-        val embedFields = mutableListOf<EmbedBuilder.Field>()
-
-        groups.forEach { group ->
-            val field = EmbedBuilder.Field()
-            field.value = group
-            embedFields.add(field)
-        }
+//        val groups = this.groupModules(context)
+//
+//        val embedFields = mutableListOf<EmbedBuilder.Field>()
+//
+//        groups.forEach { group ->
+//            val field = EmbedBuilder.Field()
+//            field.value = group
+//            embedFields.add(field)
+//        }
 
         context.channel.createEmbed {
             title = "Modules"
             color = embedColour
             author {name = "Help"}
-            fields = embedFields
+            description = modules
+//            fields = embedFields
         }
     }
 
     private suspend fun sendModuleHelp(context: Context, data: HelpCommandData) {
+        val commands = data.module!!
+            .filter { it.visibleInHelp(context) } // Only get commands that are visible to the user
+            .map { it.name }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
+            .joinToString("\n")
 
+        context.channel.createEmbed {
+            title = "${data.module.name} Module"
+            color = embedColour
+            author {name = "Help"}
+            description = commands
+        }
+    }
+
+    private fun formatAliases(data: HelpCommandData): String {
+        if (data.command!!.aliases.isEmpty()) return ""
+
+        return data.command.aliases.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it }).joinToString(", ")
     }
 
     private suspend fun sendCommandHelp(context: Context, data: HelpCommandData) {
+        context.channel.createEmbed {
+            title = data.command!!.name
+            color = embedColour
+            author {name = "Help"}
+            description = this@DefaultHelpCommand.formatAliases(data)
 
+            field {
+                name = "Usage"
+                value = data.command.helpUsage.ifEmpty { data.command.name }
+                inline = false
+            }
+
+            field {
+                name = "Description"
+                value = data.command.helpDescription.ifEmpty { "No description available." }
+                inline = false
+            }
+        }
     }
 }
