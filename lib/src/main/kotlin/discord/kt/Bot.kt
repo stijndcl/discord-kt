@@ -19,10 +19,8 @@ import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.errors.DuplicateModuleNameException
 import discord.kt.errors.handling.ErrorHandler
 import discord.kt.utils.InitOnce
-import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlin.time.ExperimentalTime
 
-@OptIn(ObsoleteCoroutinesApi::class)
 open class Bot(
     private val prefixMatcher: PrefixMatcher, // PrefixMatcher used by the bot
     errorHandler: ErrorHandler? = null, // Error handler passed onto the bot
