@@ -1,9 +1,11 @@
 package discord.kt.commands
 
 import discord.kt.Bot
+import discord.kt.annotations.AddCommands
 import discord.kt.utils.InitOnce
 
 //TODO allow checks to be added with annotations above class & functions (add to list)
+//TODO re-organize code here
 abstract class Command(private val parent: Command? = null) : CommandContainer {
     // The name of this command
     abstract val name: String
@@ -21,8 +23,10 @@ abstract class Command(private val parent: Command? = null) : CommandContainer {
 
 //    TODO make adding subcommands easier (this won't always be passed, ...)
 //      Decorator above function?
+    private val _subCommands: ArrayList<Command> = arrayListOf()
+
     // Optional list of subcommands that this command has
-    open val subCommands: List<Command> = listOf()
+    val subCommands: List<Command> = this._subCommands
 
     // Function usage in the help command
     open var helpUsage: String = ""
@@ -50,6 +54,60 @@ abstract class Command(private val parent: Command? = null) : CommandContainer {
     val bot: Bot by _initBotOnce
 
     val depth: Int = if (parent == null) 0 else parent.depth + 1
+
+    /**
+     * This uses properties that have not yet been initialized in the init()
+     * HAS to be called by a subclass
+     */
+//    TODO check that this only runs once
+//    TODO check that this was called (in BOT)
+    fun setup() {
+        this.processAnnotations()
+    }
+
+    private fun processAnnotations() {
+        this::class.java.annotations.forEach foreach@{ annotation ->
+            if (annotation is AddCommands) {
+                annotation.commands.forEach { command ->
+                    // Create a Command from the KClass
+                    val instance = command.constructors.first().call(this)
+
+                    // Check if any names clash
+                    this.subCommands.forEach { sub ->
+                        if (sub.hasOverlappingNames(instance)) {
+                            throw IllegalArgumentException("Command \"${this.name}\" " +
+                                    "already has a subcommand \"${sub.name}\" whose name or aliases clash with " +
+                                    "subcommand \"${instance.name}\".")
+                        }
+                    }
+
+                    // All checks passed -> add the subcommand in
+                    this._subCommands.add(instance)
+                }
+            }
+        }
+    }
+
+    fun hasOverlappingNames(otherName: String, otherAliases: List<String>): Boolean {
+        val nameLower = this.name.toLowerCase()
+        val aliasesLower = this.aliases.map { it.toLowerCase() }
+
+        val otherNameLower = otherName.toLowerCase()
+        val otherAliasesLower = otherAliases.map { it.toLowerCase() }
+
+        // Names are the same
+        if (nameLower == otherNameLower) return true
+
+        // Other command's name is an alias for this command
+        if (aliasesLower.contains(otherNameLower)) return true
+
+        // This command's name is an alias for the other command
+        if (otherAliasesLower.contains(nameLower)) return true
+        // Check if one of the aliases overlaps
+        return aliasesLower.any{otherAliasesLower.contains(it)}
+    }
+
+    fun hasOverlappingNames(other: Command): Boolean = this.hasOverlappingNames(other.name, other.aliases)
 
     // Check if an argument can trigger this command
     fun triggeredBy(arg: String): Boolean {

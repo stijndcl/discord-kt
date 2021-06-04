@@ -1,11 +1,13 @@
 package discord.kt.commands
 
 import discord.kt.Bot
+import discord.kt.annotations.AddCommands
 import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.utils.InitOnce
+import java.util.function.Consumer
 
 //TODO allow checks to be added with annotations above class & functions (add to list)
-abstract class Module: ArrayList<Command>(), CommandContainer {
+abstract class Module: CommandContainer {
     // Name of the module
     abstract val name: String
 
@@ -14,6 +16,10 @@ abstract class Module: ArrayList<Command>(), CommandContainer {
     open val checks: ArrayList<(Context) -> Boolean> = arrayListOf()
 
     open var helpDescription: String = ""
+
+    // Commands stored in this module
+    private val _commands = arrayListOf<Command>()
+    val commands: List<Command> = _commands
 
     // Function that checks if this module should be visible
     // in the help page in the given context
@@ -38,6 +44,30 @@ abstract class Module: ArrayList<Command>(), CommandContainer {
     // Reference to the bot
     private val _initBotOnce = InitOnce<Bot>("bot")
     private val _bot: Bot by _initBotOnce
+
+    /**
+     * This uses properties that have not yet been initialized in the init()
+     * HAS to be called by a subclass
+     */
+//    TODO check that this only runs once
+//    TODO check that this was called (in BOT)
+    fun setup() {
+        this.processAnnotations()
+    }
+
+    private fun processAnnotations() {
+        this::class.java.annotations.forEach foreach@{ annotation ->
+            if (annotation is AddCommands) {
+                annotation.commands.forEach { command ->
+                    // Create a Command from the KClass
+                    val instance = command.constructors.first().call()
+
+                    // Add command, the "add" function performs checks & throws exceptions
+                    this.add(instance)
+                }
+            }
+        }
+    }
 
     /**
      * Check if a command's name is not a duplicate before adding
@@ -65,12 +95,12 @@ abstract class Module: ArrayList<Command>(), CommandContainer {
         return true
     }
 
-    override fun add(element: Command): Boolean {
+    fun add(element: Command): Boolean {
         // Duplicate names
         if (!this.isValid(element)) return false
 
         // Add to superclass (ArrayList)
-        val added = super.add(element)
+        val added = this._commands.add(element)
         if (!added) return false
 
         // If adding to superclass succeeded, add all new names
@@ -79,6 +109,12 @@ abstract class Module: ArrayList<Command>(), CommandContainer {
 
         return true
     }
+
+    fun forEach(action: Consumer<Command>) = this._commands.forEach(action)
+
+    fun find(predicate: (Command) -> Boolean): Command? = this._commands.find(predicate)
+
+    fun filter(predicate: (Command) -> Boolean) = this._commands.filter(predicate)
 
     // Called when the module is added to the bot
     fun installed(bot: Bot) {
@@ -135,7 +171,7 @@ abstract class Module: ArrayList<Command>(), CommandContainer {
     }
 
     final override fun getChildWithName(path: List<String>, index: Int, matchEntire: Boolean): Command? {
-        this.forEach { command ->
+        this._commands.forEach { command ->
             val match = command.getChildWithName(path, index, matchEntire)
 
             if (match != null) return match
