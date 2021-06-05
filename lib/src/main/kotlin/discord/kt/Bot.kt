@@ -26,7 +26,7 @@ import kotlin.time.ExperimentalTime
 
 open class Bot(
     private val prefixMatcher: PrefixMatcher, // PrefixMatcher used by the bot
-    errorHandler: ErrorHandler? = null, // Error handler passed onto the bot
+    private val errorHandler: ErrorHandler = ErrorHandler(), // Error handler passed onto the bot, create default if none passed
     val ignoreSelf: Boolean = true, // Should the bot ignore itself?
     val ignoreBots: Boolean = true, // Should the bot ignore other bots? (excludes self)
     val ignoreDms: Boolean = true, // Should the bot ignore DM's?
@@ -35,7 +35,6 @@ open class Bot(
     private val mainEmbedColour: Color = Color(0x3498db) // Colour of the default help page
 ) {
     private lateinit var kord: Kord
-    private val _errorHandler = errorHandler ?: ErrorHandler() // Create error handler if none passed
 
     // Client user
     private val _initUserOnce = InitOnce<User>("user")
@@ -206,7 +205,7 @@ open class Bot(
                 try {
                     module.invokeCommand(context)
                 } catch (e: Exception) {
-                    this._errorHandler.onException(messageCreate, e, this.kord)
+                    this.errorHandler.onException(messageCreate, e, this.kord)
                 }
 
                 return@invoke
