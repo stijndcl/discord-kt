@@ -12,8 +12,8 @@ import dev.kord.core.on
 import dev.kord.core.supplier.EntitySupplyStrategy
 import dev.kord.gateway.builder.PresenceBuilder
 import dev.kord.rest.builder.guild.GuildCreateBuilder
-import discord.kt.annotations.AddCommands
-import discord.kt.annotations.AddModules
+import discord.kt.annotations.InstallCommands
+import discord.kt.annotations.InstallModules
 import discord.kt.commands.Context
 import discord.kt.commands.DefaultHelpModule
 import discord.kt.commands.DefaultModule
@@ -77,7 +77,7 @@ open class Bot(
     private fun processAnnotations() {
         this::class.java.annotations.forEach foreach@{ annotation ->
             // Install modules that are annotated
-            if (annotation is AddModules) {
+            if (annotation is InstallModules) {
                 annotation.modules.forEach { command ->
                     // Create a Command from the KClass
                     val instance = command.constructors.first().call()
@@ -85,7 +85,7 @@ open class Bot(
                     // Add command, the "add" function performs checks & throws exceptions
                     this.installModule(instance)
                 }
-            } else if (annotation is AddCommands) {
+            } else if (annotation is InstallCommands) {
                 // Install commands that are annotated without a module
                 annotation.commands.forEach { command ->
                     // Create a Command from the KClass

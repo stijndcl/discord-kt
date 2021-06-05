@@ -1,7 +1,7 @@
 package discord.kt.commands
 
 import discord.kt.Bot
-import discord.kt.annotations.AddCommands
+import discord.kt.annotations.InstallCommands
 import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.utils.InitOnce
 import java.util.function.Consumer
@@ -57,7 +57,7 @@ abstract class Module: CommandContainer {
 
     private fun processAnnotations() {
         this::class.java.annotations.forEach foreach@{ annotation ->
-            if (annotation is AddCommands) {
+            if (annotation is InstallCommands) {
                 annotation.commands.forEach { command ->
                     // Create a Command from the KClass
                     val instance = command.constructors.first().call()

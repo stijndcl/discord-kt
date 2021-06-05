@@ -36,3 +36,4 @@ build
 
 # Don't add testing bot because it contains tokens
 /lib/src/test/kotlin/discord/kt/testbot/
+/.env

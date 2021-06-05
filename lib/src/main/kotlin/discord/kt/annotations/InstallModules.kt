@@ -5,4 +5,4 @@ import kotlin.reflect.KClass
 
 @Target(AnnotationTarget.CLASS)
 @Repeatable
-annotation class AddModules(vararg val modules: KClass<Module>)
+annotation class InstallModules(vararg val modules: KClass<out Module>)

@@ -5,4 +5,4 @@ import kotlin.reflect.KClass
 
 @Target(AnnotationTarget.CLASS)
 @Repeatable
-annotation class AddCommands(vararg val commands: KClass<out Command>)
+annotation class InstallCommands(vararg val commands: KClass<out Command>)

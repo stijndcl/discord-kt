@@ -9,10 +9,16 @@ import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.rest.builder.message.EmbedBuilder
 
 open class ErrorHandler(
-    private val logToTerminal: Boolean = true,
     private val errorChannel: Snowflake? = null,
+    private val logToTerminal: Boolean = true,
     private val errorEmbedColour: Color = Color(0xe74c3c)
 ) {
+
+    // Constructor that allows a string for the channel instead of a snowflake
+    constructor(errorChannel: String,
+                logToTerminal: Boolean = true,
+                errorEmbedColour: Color = Color(0xe74c3c)
+    ): this(Snowflake(errorChannel), logToTerminal, errorEmbedColour)
 
     open suspend fun onException(message: MessageCreateEvent, e: Exception, kord: Kord) {
         if (this.logToTerminal) {
