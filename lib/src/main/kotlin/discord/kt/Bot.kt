@@ -12,8 +12,11 @@ import dev.kord.core.on
 import dev.kord.core.supplier.EntitySupplyStrategy
 import dev.kord.gateway.builder.PresenceBuilder
 import dev.kord.rest.builder.guild.GuildCreateBuilder
+import discord.kt.annotations.AddCommands
+import discord.kt.annotations.AddModules
 import discord.kt.commands.Context
 import discord.kt.commands.DefaultHelpModule
+import discord.kt.commands.DefaultModule
 import discord.kt.commands.Module
 import discord.kt.errors.DuplicateCommandNameException
 import discord.kt.errors.DuplicateModuleNameException
@@ -28,14 +31,17 @@ open class Bot(
     val ignoreBots: Boolean = true, // Should the bot ignore other bots? (excludes self)
     val ignoreDms: Boolean = true, // Should the bot ignore DM's?
     private val createDefaultHelp: Boolean = true, // Should a default help command be added?
+    private val defaultModuleName: String = "Default", // The default name for the module used for separate commands
     private val mainEmbedColour: Color = Color(0x3498db) // Colour of the default help page
 ) {
     private lateinit var kord: Kord
     private val _errorHandler = errorHandler ?: ErrorHandler() // Create error handler if none passed
 
+    // Client user
     private val _initUserOnce = InitOnce<User>("user")
     val user: User by _initUserOnce
 
+    private val _defaultModule = DefaultModule(this.defaultModuleName)
     private val _modules = mutableListOf<Module>()
 
     /**
@@ -65,6 +71,30 @@ open class Bot(
         this.kord.on<MessageCreateEvent> {
             this@Bot.invoke(this)
             this@Bot.onMessage(this)
+        }
+    }
+
+    private fun processAnnotations() {
+        this::class.java.annotations.forEach foreach@{ annotation ->
+            // Install modules that are annotated
+            if (annotation is AddModules) {
+                annotation.modules.forEach { command ->
+                    // Create a Command from the KClass
+                    val instance = command.constructors.first().call()
+
+                    // Add command, the "add" function performs checks & throws exceptions
+                    this.installModule(instance)
+                }
+            } else if (annotation is AddCommands) {
+                // Install commands that are annotated without a module
+                annotation.commands.forEach { command ->
+                    // Create a Command from the KClass
+                    val instance = command.constructors.first().call()
+
+                    // Add command, the "add" function performs checks & throws exceptions
+                    this._defaultModule.add(instance)
+                }
+            }
         }
     }
 
@@ -145,16 +175,14 @@ open class Bot(
         if (this.createDefaultHelp) {
             this.installModule(DefaultHelpModule(mainEmbedColour))
         }
+
+        this.processAnnotations()
     }
 
     /**
      * Parse the message that was created and invoke commands if necessary
      */
     private suspend fun invoke(messageCreate: MessageCreateEvent) {
-//        TODO allow commands & modules to overrule these restrictions
-//         (eg. some commands work in DM, ...)
-//         -> don't check them here
-//         use lateinit vars to see if user changed them, else use bot vars as defaults
         // Check if command invocation should proceed
         if (!this.checkInvocationRestrictions(messageCreate)) return
 
