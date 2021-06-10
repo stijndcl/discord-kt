@@ -1,10 +1,10 @@
 package discord.kt.commands
 
+import dev.kord.common.entity.Permission
 import discord.kt.Bot
 import discord.kt.annotations.InstallCommands
 import discord.kt.utils.InitOnce
 
-//TODO allow checks to be added with annotations above class & functions (add to list)
 //TODO re-organize code here
 abstract class Command(private val parent: Command? = null) : CommandContainer {
     // The name of this command
@@ -18,11 +18,13 @@ abstract class Command(private val parent: Command? = null) : CommandContainer {
     // This is also called when subcommands are invoked
     open val checks: ArrayList<suspend (Context) -> Boolean> = arrayListOf()
 
+    // Add permissions required for this command,
+    // shorthand for adding all of them to checks()
+    open val requiredPermissions: ArrayList<Permission> = arrayListOf()
+
     // Boolean indicating if this command can be triggered case-insensitively
     open val caseInsensitive: Boolean = true
 
-//    TODO make adding subcommands easier (this won't always be passed, ...)
-//      Decorator above function?
     private val _subCommands: ArrayList<Command> = arrayListOf()
 
     // Optional list of subcommands that this command has
@@ -62,29 +64,38 @@ abstract class Command(private val parent: Command? = null) : CommandContainer {
 //    TODO check that this only runs once
 //    TODO check that this was called (in BOT)
     fun setup() {
+        // Create checks for the required permissions
+        if (this.requiredPermissions.isNotEmpty()) {
+            this.checks.add(hasPermissions(*this.requiredPermissions.toTypedArray()))
+        }
+
         this.processAnnotations()
     }
 
     private fun processAnnotations() {
         this::class.java.annotations.forEach foreach@{ annotation ->
             if (annotation is InstallCommands) {
-                annotation.commands.forEach { command ->
-                    // Create a Command from the KClass
-                    val instance = command.constructors.first().call(this)
+                this.processCommandAnnotation(annotation)
+            }
+        }
+    }
 
-                    // Check if any names clash
-                    this.subCommands.forEach { sub ->
-                        if (sub.hasOverlappingNames(instance)) {
-                            throw IllegalArgumentException("Command \"${this.name}\" " +
-                                    "already has a subcommand \"${sub.name}\" whose name or aliases clash with " +
-                                    "subcommand \"${instance.name}\".")
-                        }
-                    }
+    private fun processCommandAnnotation(annotation: InstallCommands) {
+        annotation.commands.forEach { command ->
+            // Create a Command from the KClass
+            val instance = command.constructors.first().call(this)
 
-                    // All checks passed -> add the subcommand in
-                    this._subCommands.add(instance)
+            // Check if any names clash
+            this.subCommands.forEach { sub ->
+                if (sub.hasOverlappingNames(instance)) {
+                    throw IllegalArgumentException("Command \"${this.name}\" " +
+                            "already has a subcommand \"${sub.name}\" whose name or aliases clash with " +
+                            "subcommand \"${instance.name}\".")
                 }
             }
+
+            // All checks passed -> add the subcommand in
+            this._subCommands.add(instance)
         }
     }
 

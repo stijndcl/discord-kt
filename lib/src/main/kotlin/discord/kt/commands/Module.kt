@@ -1,5 +1,6 @@
 package discord.kt.commands
 
+import dev.kord.common.entity.Permission
 import discord.kt.Bot
 import discord.kt.annotations.InstallCommands
 import discord.kt.errors.DuplicateCommandNameException
@@ -13,7 +14,11 @@ abstract class Module: CommandContainer {
 
     // Checks that run when a command in this module is invoked,
     // command will only run if all of them return true
-    open val checks: ArrayList<(Context) -> Boolean> = arrayListOf()
+    open val checks: ArrayList<suspend (Context) -> Boolean> = arrayListOf()
+
+    // Add permissions required for this module,
+    // shorthand for adding all of them to checks()
+    open val requiredPermissions: ArrayList<Permission> = arrayListOf()
 
     open var helpDescription: String = ""
 
@@ -52,6 +57,11 @@ abstract class Module: CommandContainer {
 //    TODO check that this only runs once
 //    TODO check that this was called (in BOT)
     fun setup() {
+        // Create checks for the required permissions
+        if (this.requiredPermissions.isNotEmpty()) {
+            this.checks.add(hasPermissions(*this.requiredPermissions.toTypedArray()))
+        }
+
         this.processAnnotations()
     }
 
